@@ -1,29 +1,24 @@
-# fly.toml app configuration file generated for oroute on 2026-03-20T09:12:34Z
+# fly.toml app configuration file generated for omniroute-novjog on 2026-09-19T11:46:57Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'omniroute'
-primary_region = 'sin'
+app = 'omniroute-novjog'
+primary_region = 'ams'
 
 [build]
-  # Fly's shared remote builders have less RAM than the 16GB GitHub Actions
-  # runners this Dockerfile's defaults are tuned for (see Dockerfile's
-  # OMNIROUTE_BUILD_WORKERS comment + tests/unit/docker-build-memory-budget.test.ts).
-  # 2 parallel page-data workers (the repo default) needs ~9GB peak RSS and
-  # OOM-killed the build on a smaller Fly builder with no visible error beyond
-  # "did not complete successfully: exit code: 1" right after "Creating an
-  # optimized production build...". Forcing a single worker here (Fly-specific,
-  # does not change the Dockerfile's own default used by CI) trades build time
-  # for a peak of ~4.5GB, which fits.
-  [build.args]
-    OMNIROUTE_BUILD_WORKERS = '1'
+
+[deploy]
+
+[env]
+  BIND = '0.0.0.0'
+  DATA_DIR = '/data'
+  HOST = '0.0.0.0'
+  HOSTNAME = '0.0.0.0'
+  TZ = 'Asia/Shanghai'
 
 [processes]
   app = 'node run-standalone.mjs'
-
-[deploy]
-#  release_command = "node ./dbsetup.js"
 
 [[mounts]]
   source = 'data'
@@ -33,7 +28,7 @@ primary_region = 'sin'
   auto_extend_size_limit = '10GB'
 
 [http_service]
-  internal_port = 20128
+  internal_port = 8080
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
@@ -45,17 +40,3 @@ primary_region = 'sin'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 1024
-
-[env]
-  TZ = "Asia/Shanghai"
-
-  # Bind to all interfaces for Fly runtime networking.
-  HOST = "0.0.0.0"
-  HOSTNAME = "0.0.0.0"
-  BIND = "0.0.0.0"
-
-  # The Dockerfile bakes DATA_DIR=/app/data for docker-compose's volume mount.
-  # Fly's own persistent volume (see [[mounts]] above) is mounted at /data, so
-  # this override is required or the SQLite DB/settings live on the ephemeral
-  # container filesystem and are lost on every restart or redeploy.
-  DATA_DIR = "/data"
