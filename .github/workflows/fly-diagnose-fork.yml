@@ -1,0 +1,40 @@
+name: Diagnose Fly.io app (fork)
+
+# Fork-specific troubleshooting aid: pulls live status, recent logs, and
+# health-check results for a Fly.io app without touching its deployment.
+# Manual trigger only. Requires the same FLY_API_TOKEN repository secret
+# used by fly-deploy-fork.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Fly.io app name to inspect"
+        required: true
+        default: "omniroute-allenchen"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Fetch status, logs, and health checks
+    runs-on: ubuntu-24.04
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      APP_NAME: ${{ inputs.app_name }}
+    steps:
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: App status
+        run: flyctl status -a "$APP_NAME"
+
+      - name: Machine list (verbose)
+        run: flyctl machines list -a "$APP_NAME"
+
+      - name: Health checks
+        run: flyctl checks list -a "$APP_NAME" || echo "no checks configured"
+
+      - name: Recent logs (30s window, then stop — logs stream indefinitely otherwise)
+        run: timeout 30 flyctl logs -a "$APP_NAME" || true
