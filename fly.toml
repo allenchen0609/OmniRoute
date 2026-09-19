@@ -7,6 +7,17 @@ app = 'omniroute'
 primary_region = 'sin'
 
 [build]
+  # Fly's shared remote builders have less RAM than the 16GB GitHub Actions
+  # runners this Dockerfile's defaults are tuned for (see Dockerfile's
+  # OMNIROUTE_BUILD_WORKERS comment + tests/unit/docker-build-memory-budget.test.ts).
+  # 2 parallel page-data workers (the repo default) needs ~9GB peak RSS and
+  # OOM-killed the build on a smaller Fly builder with no visible error beyond
+  # "did not complete successfully: exit code: 1" right after "Creating an
+  # optimized production build...". Forcing a single worker here (Fly-specific,
+  # does not change the Dockerfile's own default used by CI) trades build time
+  # for a peak of ~4.5GB, which fits.
+  [build.args]
+    OMNIROUTE_BUILD_WORKERS = '1'
 
 [processes]
   app = 'node run-standalone.mjs'
