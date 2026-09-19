@@ -20,7 +20,13 @@ primary_region = 'syd'
     OMNIROUTE_BUILD_WORKERS = '1'
 
 [processes]
-  app = 'node run-standalone.mjs'
+  # The Dockerfile's own CMD is `node dev/run-standalone.mjs` (assembleStandalone.mjs
+  # copies scripts/dev/run-standalone.mjs to <standalone>/dev/run-standalone.mjs).
+  # Fly's [processes] entry overrides the container's default CMD, so it must match
+  # that path exactly — this previously pointed at the repo-root filename, which
+  # doesn't exist in the image, and crashed every machine with "Cannot find module
+  # '/app/run-standalone.mjs'" in a restart loop until Fly gave up after 10 tries.
+  app = 'node dev/run-standalone.mjs'
 
 [deploy]
 #  release_command = "node ./dbsetup.js"
