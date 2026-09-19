@@ -16,6 +16,15 @@ const HOME_ITEMS: readonly SidebarItemDefinition[] = [
     icon: "home",
     exact: true,
   },
+  {
+    id: "assistant",
+    href: "/dashboard/assistant",
+    i18nKey: "assistant",
+    labelFallback: "Assistant",
+    subtitleKey: "assistantSubtitle",
+    subtitleFallback: "Capture, triage, focus",
+    icon: "psychology_alt",
+  },
 ];
 
 const OMNI_PROXY_ITEMS: readonly SidebarItemDefinition[] = [

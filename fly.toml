@@ -37,8 +37,14 @@ primary_region = 'sin'
 
 [env]
   TZ = "Asia/Shanghai"
-  
+
   # Bind to all interfaces for Fly runtime networking.
   HOST = "0.0.0.0"
   HOSTNAME = "0.0.0.0"
   BIND = "0.0.0.0"
+
+  # The Dockerfile bakes DATA_DIR=/app/data for docker-compose's volume mount.
+  # Fly's own persistent volume (see [[mounts]] above) is mounted at /data, so
+  # this override is required or the SQLite DB/settings live on the ephemeral
+  # container filesystem and are lost on every restart or redeploy.
+  DATA_DIR = "/data"
