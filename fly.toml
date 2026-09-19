@@ -4,7 +4,7 @@
 #
 
 app = 'omniroute'
-primary_region = 'sin'
+primary_region = 'syd'
 
 [build]
   # Fly's shared remote builders have less RAM than the 16GB GitHub Actions

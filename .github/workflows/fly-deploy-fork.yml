@@ -1,0 +1,89 @@
+name: Deploy to Fly.io (fork)
+
+# Fork-specific escape hatch: Fly.io's web "Launch an App" wizard only offers
+# a GitHub-source flow (no pre-built-image option), and its GitHub-connected
+# build has been OOM-killing on this codebase's Next.js production build
+# while also silently regenerating fly.toml's [build]/[http_service]
+# overrides on every attempt. Running the real `flyctl deploy` here instead
+# skips Fly's build step entirely (deploying the image
+# fly-image-fork.yml already built and pushed to GHCR) and runs on a machine
+# with full internet access, unlike this project's own sandboxed dev
+# environment which cannot reach fly.io directly.
+#
+# Requires a repository secret named FLY_API_TOKEN (a Fly.io deploy token,
+# added via GitHub Settings -> Secrets and variables -> Actions). Manual
+# trigger only — this is a one-off deploy aid, not part of the regular
+# CI/release pipeline.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Fly.io app name to create/deploy"
+        required: true
+        default: "omniroute-allenchen"
+      region:
+        description: "Fly.io region code for the data volume (first deploy only)"
+        required: true
+        default: "syd"
+      initial_password:
+        description: "Initial dashboard login password"
+        required: true
+        default: "ChangeMe-9214!"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy pre-built image to Fly.io
+    runs-on: ubuntu-24.04
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      APP_NAME: ${{ inputs.app_name }}
+      REGION: ${{ inputs.region }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify Fly.io auth (fails fast if FLY_API_TOKEN is missing/invalid)
+        run: flyctl auth whoami
+
+      - name: Create app (idempotent — ok if it already exists)
+        run: flyctl apps create "$APP_NAME" || echo "App may already exist, continuing"
+
+      - name: Create data volume if missing
+        run: |
+          set -euo pipefail
+          if flyctl volumes list -a "$APP_NAME" --json | grep -q '"Name":"data"'; then
+            echo "Volume 'data' already exists, skipping"
+          else
+            flyctl volumes create data --region "$REGION" --size 1 -a "$APP_NAME" --yes
+          fi
+
+      - name: Generate and set app secrets
+        run: |
+          set -euo pipefail
+          JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
+          API_KEY_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$JWT_SECRET"
+          echo "::add-mask::$API_KEY_SECRET"
+          flyctl secrets set \
+            JWT_SECRET="$JWT_SECRET" \
+            API_KEY_SECRET="$API_KEY_SECRET" \
+            INITIAL_PASSWORD="${{ inputs.initial_password }}" \
+            -a "$APP_NAME"
+
+      - name: Deploy pre-built GHCR image (no build step)
+        run: |
+          flyctl deploy \
+            --app "$APP_NAME" \
+            --image ghcr.io/allenchen0609/omniroute:latest \
+            --ha=false \
+            --now
+
+      - name: Show app status and URL
+        run: flyctl status -a "$APP_NAME"
