@@ -14,6 +14,7 @@ if [ ! -f .env ] && [ -f .env.example ]; then
   cp .env.example .env
 fi
 
-# `npm install` (not `npm ci`) so the cached container's node_modules is reused.
+# `npm install` (not `npm ci`) so the cached container's node_modules is reused;
+# `--no-save` keeps the container's npm from rewriting package-lock.json.
 # Husky hooks are irrelevant in ephemeral containers.
-HUSKY=0 npm install --no-audit --no-fund
+HUSKY=0 npm install --no-save --no-audit --no-fund
